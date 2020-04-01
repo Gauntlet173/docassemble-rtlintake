@@ -1,0 +1,374 @@
+metadata:
+  title: |
+    Round Table Law Client Intake Tool
+  short title: Intake
+  description: |
+    This tool collects the information required to open a file at Round Table Law.
+  authors:
+    - name: Jason Morris
+      organization: Round Table Law
+  revision_date: 2020-04-01
+  comment: |
+    This is an intake tool.
+---
+include:
+  - basic-questions.yml
+---
+objects:
+  - client: DAList.using(object_type=Individual, ask_number=True, complete_attribute="complete", there_are_any=True)
+  - client[i].id_front: DAFile
+  - client[i].id_back: DAFile
+  - jason_signature: DAStaticFile.using(filename='signature.png')
+---
+default role: client
+code: |
+  multi_user = True
+  role = 'client'
+  if defined('email_lsa_result') and not defined('approved') or (defined('approved') and not approved):
+    if user_logged_in():
+      if user_info().email == 'jason@roundtablelaw.ca':
+        role = 'attorney'
+---
+initial: true
+code: |
+
+  undefine('lsa') #This ensures it will be regenerated every time it is requested.
+
+  if not user_logged_in():
+    ask_user_to_login
+  process_action() # Required to ensure actions cannot be run while not logged in.
+---
+ga id: ask_user_to_login
+event: ask_user_to_login
+question: |
+  Please log in or register a new user account to access this intervew.
+buttons:
+  - Log in: signin
+  - Exit: exit
+---
+mandatory: True
+code: |
+  # This is the primary code-flow block.  This should be run once, successfully,
+  # and then the interview should be finished.
+  
+  # Introduction
+  #if role == "client":
+  intro
+  
+  # About You
+  client.gather()
+  
+  # Credit Card Authorization
+  credit_card_name
+  
+  document_preview
+  for c in client:
+    c.signature
+    c.signing_date = today()
+  email_lsa_result = send_email(to='jason@roundtablelaw.ca',
+    subject='Proposed Legal Services Agreement', template=alert_lawyer)
+  if not email_lsa_result:
+    log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
+      and advise him of the problem so that it can be corrected as soon as possible.", "danger")
+  if approved: #Seeking approved will send it to something the lawyer needs to do, which will tell them to wait.
+    attorney_signing_date = today()
+    document_download
+  else:
+    why_not_approved
+    email_client_final_result = send_email(to=client[0].email_address,
+    subject='Proposed Legal Services Agreement with Round Table Law', template=alert_client)
+    if not email_client_final_result:
+      log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
+        and advise him of the problem so that it can be corrected as soon as possible.", "danger")
+    not_approved
+---
+code: |
+  # This is code to define what a complete "Client" object contains
+  client[i].name.first
+  client[i].email_address
+  client[i].address.city
+  client[i].occupation
+  client[i].id_front
+  client[i].complete = True
+---
+field: intro
+question: Introduction
+subquestion: |
+  Thank you for using the Round Table Law Estate Intake Tool.
+  
+  This is a very short interview that will ask you a few short questions to help us generate a retainer letter
+  for you. We wouldn't bother with the paperwork if it weren't absolutely necessary, sorry.
+  
+  You can sign the retainer letter right in this tool, without ever having to print anything out. It will be sent
+  back to me, and I can sign it electronically, too, and then you will get the copy with both signatures in your
+  email. That will let us get started.
+  
+  Please note that the information you put into this interview will be accessible to Round Table Law.
+  Because you are not yet our client, you should not put anything confidential in this system.
+  
+  If you're not sure how to answer a question, send me an email at jason@roundtablelaw.ca and I'll help you out.
+  
+  You can stop the interview and come back to it at any time.  Just go to [docs.roundtablelaw.ca](https://docs.roundtablelaw.ca), log in, and you
+  will be shown your interviews that are already underway.  Your data will stay for 30 days after the last time
+  you use the interview, after which it will be deleted for your protection.
+---
+question: Is this service for one person or two?
+field: client.target_number
+choices:
+  - An Individual: 1
+  - A Couple: 2
+---
+generic object: Individual
+question: Tell me about the ${ ordinal(i) } client.
+fields:
+  - First Name: client[i].name.first
+  - Middle Name(s): client[i].name.middle
+    required: False
+  - Last Name: client[i].name.last
+---
+question: Where does ${client[i]} live?
+fields:
+  - Unit: client[i].address.unit
+    required: False
+  - Street: client[i].address.street
+  - City: client[i].address.city
+  - Province: client[i].address.state
+    default: Alberta
+  - Country: client[i].address.country
+    default: Canada
+  - Postal Code: client[i].address.zip
+---
+generic object: Individual
+question: What does ${ x } do for a living?
+fields:
+  - Occupation: x.occupation
+---
+question: |
+  Identification for ${ client[i] }
+subquestion: |
+  Law firms in Alberta are required to verify the identity of their clients,
+  and maintain images of the documents that were used for that purpose.
+  
+  Please provide clear images of the front and back of your government ID.
+  
+  If you prefer to provide your identification
+  over video conference, you can leave these fields blank and press "Continue".
+  
+  Note that depending on your browser, it may actually be easier to complete this section of the interview
+  on a mobile device equipped with a camera.
+  
+  If you want to continue this interview on a mobile device go to the following
+  url: ${ interview_url() }
+fields:
+  - label: |
+      Front of Driver's License
+    field: client[i].id_front
+    datatype: file
+    required: False
+  - label: |
+      Back of Driver's License
+    field: client[i].id_back
+    datatype: file
+    required: False
+---
+question: |
+  Credit Card Details
+subquestion: |
+  Please provide the details for your credit card.  These will be used to add an authorization to the Legal
+  Services Agreement allowing Round Table Law to charge your credit card for specific amounts at specific times.
+  
+  This information will be kept in the highest security, and deleted as soon as it is no longer required.
+  
+  You will not be charged anything until the services agreed to have been completed.
+fields:
+  - Name on Card: credit_card_name
+  - Card Number: credit_card_number
+  - Expiry Date: credit_card_expiry
+  - Security Code: credit_card_security_code
+  - Postal Code: credit_card_postal_code
+---
+event: role_event
+question: Request Sent to Round Table Law
+prevent going back: True
+subquestion: |
+  % if 'attorney' in role_needed:
+  Thank you for agreeing to the Legal Services Agreement.
+  
+  We are now waiting for Jason at Round Table Law to perform the conflict checks
+  required by the Law Society of Alberta and approve the agreement.  We aim for
+  a prompt response time, but it may take until the next business day.
+  
+  Thanks for your patience.
+  
+  When the conflict checks have been completed and the agreement has been signed,
+  you will receive an email notifying you to return to the interview, and providing a link.
+  
+  You will then be able to download the agreement with both signatures, or email it
+  to yourself.
+
+  You can press **Check** below to see whether the approval has already happened.
+  % else:
+  The interview is with the client.
+  % endif
+  
+  ${ interview_url() } - For Debugging Only
+buttons:
+  - Check: refresh
+---
+role: attorney
+question: Do you approve of the LSA as drafted?
+subquestion: |
+  #### Download Documents:
+  Document|File
+  ---|---
+  Legal Service Agreement|${ lsa.show(width='100px') }
+yesno: approved
+---
+event: finished_for_attorney
+question: Process Complete
+subquestion: |
+  The attorney's part of the process is complete.
+
+  Include the document generated with both signatures for download, here.
+---
+field: document_preview
+question: | 
+  Please Review the Draft LSA
+subquestion: |
+  Below is a link to a PDF of the draft Legal Services Agreement between you and Round Table Law.
+  
+  Please download it and review it carefully. If you are satisfied with it, click "Continue" below
+  to add your signatures to it electronically and send it to Round Table Law.
+  
+  **THERE IS NO NEED TO PRINT IT**
+  
+  The document can be signed electronically in this tool if you are satisfied with it.
+  
+  #### Download Documents:
+  Document|File
+  ---|---
+  Legal Service Agreement|${ lsa.show(width='100px') }
+  
+  ***
+  #### Email Documents: ${action_button_html(url_action('email_lsa'),label="Email Documents", icon='far-fa-envelope',
+    size='md') }
+  ***
+---
+attachment:
+  - name: Enduring Power of Attorney
+    filename: lsa
+    variable name: lsa
+    docx template file: lsa.docx
+    valid formats:
+      - pdf
+---
+attachment:
+  - name: Client Identification
+    filename: client_id
+    variable name: client_id
+    docx template file: client_id.docx
+    valid formats:
+      - pdf
+---
+event: email_lsa
+code: |
+  email_lsa_result = send_email(to=user_info().email,
+    subject='Round Table Law Legal Services Agreement', template=lsa_template,
+    attachments=[lsa])
+  if email_lsa_result:
+    log("Documents emailed to " + user_info().email + ", please confirm receipt.", "info")
+  else:
+    log("There was an error sending the documents. Please try again or contact us for assistance.", "danger")
+---
+template: lsa_template
+content: |
+  Thank you for using the Round Table Law Online Client Intake Tool.
+  
+  Please find your executed Legal Services Agreement attached to this email.
+  
+  If you have any diffculties with the attachment, please let me know at jason@roundtablelaw.ca
+---
+event: email_lawyer
+code: |
+  email_lsa_result = send_email(to='jason@roundtablelaw.ca',
+    subject='Proposed Legal Services Agreement', template=alert_lawyer)
+  if not email_lsa_result:
+    log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
+      and advise him of the problem so that it can be corrected as soon as possible.", "danger")
+---
+template: alert_lawyer
+content: |
+  ${ client } has(have) sent you a proposed legal services agreement. Follow the link below to view it,
+  perform a conflicts check and approve or reject it.
+  
+  ${ interview_url() }
+---
+template: alert_client
+content: |
+  Round Table Law has responded to your proposed legal services agreement. To see the response, click on the
+  link below.
+  
+  ${ interview_url() }
+---
+role:
+  - attorney
+event: document_download
+question: Legal Service Agreement Approved
+subquestion: |
+  The completed LSA and Client ID documents are below. Download and file them.
+  
+  #### Download Documents:
+  Document|File
+  ---|---
+  Legal Service Agreement|${ lsa.show(width='100px') }
+  Client ID|${ client_id.show(width='100px') }
+---
+role:
+  - client
+event: document_download
+question: Legal Service Agreement Approved
+subquestion: |
+  Thank you for engaging the services of Round Table Law. Your fully executed Legal Services Agreement
+  is shown below. Please download it and save it for your records.
+  
+  You can also email it to yourself by clicking the Email button below.
+  
+  #### Download Documents:
+  Document|File
+  ---|---
+  Legal Service Agreement|${ lsa.show(width='100px') }
+  
+  ***
+  #### Email Documents: ${action_button_html(url_action('email_lsa'),label="Email Documents", icon='far-fa-envelope',
+    size='md') }
+  ***
+---
+question: |
+  Why are you not approving the LSA
+subquestion: |
+  This explanation, along with contact information, will be displayed to the user.
+fields:
+  - Reason: why_not_approved
+    input type: area
+role: attorney
+---
+role:
+  - attorney
+  - client
+event: not_approved
+question: |
+  Unfortunately, the LSA Could Not Be Approved Online
+subquestion: |
+  Jason Morris of Round Table Law provided the following explanation for why
+  the LSA could not be approved through this tool:
+  
+  ${ why_not_approved }
+  
+  If you have any further questions or need assistance, please contact
+  jason@roundtablelaw.ca
+---
+generic object: Individual
+question: |
+  What is ${ x }'s email address?
+field: x.email_address
+---
