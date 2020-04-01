@@ -24,10 +24,8 @@ default role: client
 code: |
   multi_user = True
   role = 'client'
-  if defined('email_lsa_result') and not defined('approved') or (defined('approved') and not approved):
-    if user_logged_in():
-      if user_info().email == 'jason@roundtablelaw.ca':
-        role = 'attorney'
+  if user_has_privilege('advocate'):
+    role = 'advocate'
 ---
 initial: true
 code: |
@@ -191,7 +189,7 @@ event: role_event
 question: Request Sent to Round Table Law
 prevent going back: True
 subquestion: |
-  % if 'attorney' in role_needed:
+  % if 'advocate' in role_needed:
   Thank you for agreeing to the Legal Services Agreement.
   
   We are now waiting for Jason at Round Table Law to perform the conflict checks
@@ -215,7 +213,7 @@ subquestion: |
 buttons:
   - Check: refresh
 ---
-role: attorney
+role: advocate
 question: Do you approve of the LSA as drafted?
 subquestion: |
   #### Download Documents:
@@ -311,20 +309,8 @@ content: |
   ${ interview_url() }
 ---
 role:
-  - attorney
-event: document_download
-question: Legal Service Agreement Approved
-subquestion: |
-  The completed LSA and Client ID documents are below. Download and file them.
-  
-  #### Download Documents:
-  Document|File
-  ---|---
-  Legal Service Agreement|${ lsa.show(width='100px') }
-  Client ID|${ client_id.show(width='100px') }
----
-role:
   - client
+  - advocate
 event: document_download
 question: Legal Service Agreement Approved
 subquestion: |
@@ -337,6 +323,9 @@ subquestion: |
   Document|File
   ---|---
   Legal Service Agreement|${ lsa.show(width='100px') }
+  % if user_has_privilege('advocate'): 
+  Client ID|${ client_id.show(width='100px') }
+  % endif 
   
   ***
   #### Email Documents: ${action_button_html(url_action('email_lsa'),label="Email Documents", icon='far-fa-envelope',
@@ -350,10 +339,10 @@ subquestion: |
 fields:
   - Reason: why_not_approved
     input type: area
-role: attorney
+role: advocate
 ---
 role:
-  - attorney
+  - advocate
   - client
 event: not_approved
 question: |
