@@ -92,7 +92,7 @@ code: |
 code: |
   # This is code to define what a complete "Client" object contains
   client[i].name.first
-  client[i].email_address
+  client[i].email
   client[i].address.city
   client[i].occupation
   client[i].id_front
@@ -323,11 +323,15 @@ role:
 event: document_download
 question: Legal Service Agreement Approved
 subquestion: |
+  % if not user_has_privilege('advocate'):
   Thank you for engaging the services of Round Table Law. Your fully executed Legal Services Agreement
   is shown below. Please download it and save it for your records.
   
   You can also email it to yourself by clicking the Email button below.
-  
+  % endif
+  % if user_has_privilege('advocate'):
+  Please download and keep the LSA and Client ID documents below for the firm's records.
+  % endif
   #### Download Documents:
   Document|File
   ---|---
@@ -364,9 +368,4 @@ subquestion: |
   
   If you have any further questions or need assistance, please contact
   jason@roundtablelaw.ca
----
-generic object: Individual
-question: |
-  What is ${ x }'s email address?
-field: x.email_address
 ---
