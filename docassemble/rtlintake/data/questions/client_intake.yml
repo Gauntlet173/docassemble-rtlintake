@@ -86,7 +86,7 @@ code: |
 ---
 code: |
   # This block is to send email to the client only once when the document is approved by the lawyer.
-  email_client_final_result = send_email(to=client[0].email_address,
+  email_client_final_result = send_email(to=client[0].email_address(),
     subject='Proposed Legal Services Agreement with Round Table Law', template=alert_client)
 ---
 code: |
