@@ -63,22 +63,31 @@ code: |
   for c in client:
     c.signature
     c.signing_date = today()
-  email_lsa_result = send_email(to='jason@roundtablelaw.ca',
-    subject='Proposed Legal Services Agreement', template=alert_lawyer)
   if not email_lsa_result:
     log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
       and advise him of the problem so that it can be corrected as soon as possible.", "danger")
-  if approved: #Seeking approved will send it to something the lawyer needs to do, which will tell them to wait.
+  if approved: #Seeking approved will send it to something the lawyer needs to do, which will tell the client to wait.
     attorney_signing_date = today()
+    if not email_client_final_result:
+      log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
+        and advise him of the problem so that it can be corrected as soon as possible.", "danger")
     document_download
   else:
     why_not_approved
-    email_client_final_result = send_email(to=client[0].email_address,
-    subject='Proposed Legal Services Agreement with Round Table Law', template=alert_client)
     if not email_client_final_result:
       log("There was an error while attempting to alert Round Table Law. Please email jason@roundtablelaw.ca \
         and advise him of the problem so that it can be corrected as soon as possible.", "danger")
     not_approved
+---
+code: |
+  # This block is to send email to the lawyer only once when the lSA is signed by the client.
+  email_lsa_result = send_email(to='jason@roundtablelaw.ca',
+    subject='Proposed Legal Services Agreement', template=alert_lawyer)
+---
+code: |
+  # This block is to send email to the client only once when the document is approved by the lawyer.
+  email_client_final_result = send_email(to=client[0].email_address,
+    subject='Proposed Legal Services Agreement with Round Table Law', template=alert_client)
 ---
 code: |
   # This is code to define what a complete "Client" object contains
