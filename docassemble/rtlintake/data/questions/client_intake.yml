@@ -166,6 +166,10 @@ subquestion: |
   
   If you want to continue this interview on a mobile device go to the following
   url: ${ interview_url() }
+  
+  If your mobile device has a QR reader, you can scan this code to be sent to the same address:
+  
+  ${ qr_code(interview_url()) }
 fields:
   - label: |
       Front of Driver's License
@@ -217,8 +221,6 @@ subquestion: |
   % else:
   The interview is with the client.
   % endif
-  
-  ${ interview_url() } - For Debugging Only
 buttons:
   - Check: refresh
 ---
@@ -328,6 +330,10 @@ subquestion: |
   is shown below. Please download it and save it for your records.
   
   You can also email it to yourself by clicking the Email button below.
+  
+  Once you have downloaded the records, please click "Book Appointment" to select a
+  convenient time to meet with Jason Morris over video conference.
+  
   % endif
   % if user_has_privilege('advocate'):
   Please download and keep the LSA and Client ID documents below for the firm's records.
@@ -341,8 +347,13 @@ subquestion: |
   % endif 
   
   ***
-  #### Email Documents: ${action_button_html(url_action('email_lsa'),label="Email Documents", icon='far-fa-envelope',
+  #### Email Documents:
+  ${action_button_html(url_action('email_lsa'),label="Email Documents", icon='far-fa-envelope',
     size='md') }
+  ***
+  #### Book Appointment:
+  ${action_button_html('https://calendly.com/jason-morris',label="Book Appointment", icon='far-fa-calendar-plus',
+    size='md')}
   ***
 ---
 question: |
